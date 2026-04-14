@@ -45,7 +45,8 @@ describe('tapStopwatch', () => {
     s = tapStopwatch(s, 80000);  // tap 3: exercise set 2
     s = tapStopwatch(s, 110000); // tap 4: done
     expect(s.phase).toBe('done');
-    expect(s.phaseDurations.length).toBe(4); // ex1, rest1, ex2, ex2-final
+    expect(s.phaseDurations.length).toBe(3); // ex1, rest1, ex2 — no padding
+    expect(s.phaseDurations).toEqual([30000, 50000, 30000]);
   });
 
   test('done state is a no-op on further taps', () => {
@@ -75,11 +76,10 @@ describe('getExerciseDurations', () => {
   test('returns only exercise phase durations (even-indexed)', () => {
     let s = createStopwatchState(2);
     s = tapStopwatch(s, 0);
-    s = tapStopwatch(s, 20000);  // ex1 = 20s
-    s = tapStopwatch(s, 70000);  // rest1 = 50s
-    s = tapStopwatch(s, 90000);  // ex2 = 20s
-    s = tapStopwatch(s, 110000); // done
-    expect(getExerciseDurations(s)).toEqual([20000, 50000, 20000]);
-    // Note: last "exercise" duration is included
+    s = tapStopwatch(s, 20000);  // ex1 = 20s → phaseDurations: [20000]
+    s = tapStopwatch(s, 70000);  // rest1 = 50s → phaseDurations: [20000, 50000]
+    s = tapStopwatch(s, 90000);  // ex2 = 20s → phaseDurations: [20000, 50000, 20000]
+    s = tapStopwatch(s, 110000); // done → phaseDurations: [20000, 50000, 20000]
+    expect(getExerciseDurations(s)).toEqual([20000, 20000]); // even-indexed: indices 0 and 2
   });
 });

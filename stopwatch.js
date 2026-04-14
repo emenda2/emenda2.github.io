@@ -20,8 +20,7 @@ function tapStopwatch(state, now) {
 
   if (state.phase === 'exercise') {
     if (state.currentSet === state.totalSets) {
-      // After final exercise, transition to done with implicit 0-duration rest
-      return { ...state, phase: 'done', phaseDurations: [...durations, 0], startTime: null };
+      return { ...state, phase: 'done', phaseDurations: durations, startTime: null };
     }
     return { ...state, phase: 'rest', startTime: now, phaseDurations: durations };
   }
@@ -40,20 +39,11 @@ function tapStopwatch(state, now) {
 }
 
 function getRestDurations(state) {
-  // Filter odd-indexed durations (rest phases), excluding the final 0-duration padding
-  let durations = state.phaseDurations;
-  if (durations.length > 0 && durations[durations.length - 1] === 0) {
-    durations = durations.slice(0, -1);
-  }
-  return durations.filter((_, i) => i % 2 === 1);
+  return state.phaseDurations.filter((_, i) => i % 2 === 1);
 }
 
 function getExerciseDurations(state) {
-  // Return all durations except the final 0-duration padding (if present)
-  if (state.phaseDurations.length > 0 && state.phaseDurations[state.phaseDurations.length - 1] === 0) {
-    return state.phaseDurations.slice(0, -1);
-  }
-  return state.phaseDurations;
+  return state.phaseDurations.filter((_, i) => i % 2 === 0);
 }
 
 if (typeof module !== 'undefined') {
