@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Gym Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header id="app-header">
+    <span id="app-title">GYM TRACKER</span>
+    <button id="gym-toggle" aria-label="Switch gym">GYM 1</button>
+  </header>
+
+  <nav id="day-tabs" role="tablist"></nav>
+
+  <main id="card-container"></main>
+
+  <footer id="app-footer">
+    <button id="finish-early-btn" class="hidden">Finish Early</button>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="stopwatch.js"></script>
+  <script src="storage.js"></script>
+  <script src="logger.js"></script>
+  <script src="sheets.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
