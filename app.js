@@ -334,6 +334,44 @@ function showSyncStatus(msg) {
   setTimeout(() => el.remove(), 3000);
 }
 
-// ── Placeholder stubs (implemented in later tasks) ─
-function checkSkippedDays() {}
-function retrySyncQueue() {}
+// ── Offline Retry ──────────────────────────────────
+async function retrySyncQueue() {
+  const queue = getSyncQueue();
+  if (!queue.length) return;
+  if (!navigator.onLine) return;
+
+  try {
+    for (const payload of queue) {
+      await syncExercises(CONFIG.sheetsWebAppUrl, payload.exerciseRows);
+      await syncSession(CONFIG.sheetsWebAppUrl, payload.sessionRow);
+    }
+    clearSyncQueue();
+    showSyncStatus('Queued workouts synced ✓');
+  } catch (e) {
+    // Still offline or error — leave queue intact
+  }
+}
+
+// ── Skipped Day Detection ──────────────────────────
+async function checkSkippedDays() {
+  const last = getLastSession();
+  if (!last) return;
+
+  const lastDate = new Date(last.date + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round((today - lastDate) / 86400000);
+  if (diffDays <= 1) return;
+
+  for (let i = 1; i < diffDays; i++) {
+    const skippedDate = new Date(lastDate);
+    skippedDate.setDate(skippedDate.getDate() + i);
+    const row = buildSkippedRow(skippedDate);
+    try {
+      await syncSkipped(CONFIG.sheetsWebAppUrl, row);
+    } catch (e) {
+      // Best-effort — don't queue skipped days
+    }
+  }
+}
