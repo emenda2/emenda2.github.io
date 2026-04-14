@@ -1,11 +1,13 @@
 async function _post(url, payload) {
-  const res = await fetch(url, {
+  // Google Apps Script doesn't handle CORS preflight (OPTIONS).
+  // text/plain is a "simple" content type — no preflight needed.
+  // no-cors means the response is opaque but the data reaches the server.
+  await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(payload),
+    mode: 'no-cors',
   });
-  if (!res.ok) throw new Error(`Sheets sync failed: ${res.status}`);
-  return res.json();
 }
 
 async function syncExercises(url, rows) {
