@@ -262,8 +262,12 @@ function onStopwatchTap(exercise, card) {
     card.classList.add('done');
   }
 
+  if (prev.phase === 'rest') {
+    cancelRestBeeps(exercise.name);
+  }
+
   if (next.phase === 'rest') {
-    scheduleRestBeeps();
+    scheduleRestBeeps(exercise.name);
   }
 
   startTickLoop();
@@ -273,18 +277,20 @@ function onStopwatchTap(exercise, card) {
 
 // ── Audio ──────────────────────────────────────────
 let _audioCtx = null;
+const _pendingBeepOscs = new Map(); // exerciseName → [OscillatorNode, ...]
 
 function getAudioCtx() {
   if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return _audioCtx;
 }
 
-function scheduleRestBeeps() {
+function scheduleRestBeeps(exerciseName) {
   try {
     const ctx = getAudioCtx();
     if (ctx.state === 'suspended') ctx.resume();
 
     const base = ctx.currentTime;
+    const oscs = [];
     [45, 46, 47, 48, 49, 50].forEach(sec => {
       const t = base + sec;
       const osc = ctx.createOscillator();
@@ -298,10 +304,21 @@ function scheduleRestBeeps() {
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
       osc.start(t);
       osc.stop(t + 0.3);
+      oscs.push(osc);
     });
+    _pendingBeepOscs.set(exerciseName, oscs);
   } catch (e) {
     console.warn('Audio not available:', e);
   }
+}
+
+function cancelRestBeeps(exerciseName) {
+  const oscs = _pendingBeepOscs.get(exerciseName);
+  if (!oscs) return;
+  if (_audioCtx) {
+    oscs.forEach(osc => { try { osc.stop(_audioCtx.currentTime); } catch (_) {} });
+  }
+  _pendingBeepOscs.delete(exerciseName);
 }
 
 // ── Workout Completion ─────────────────────────────
