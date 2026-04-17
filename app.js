@@ -5,11 +5,17 @@ if ('serviceWorker' in navigator) {
 // ── Screen Wake Lock ────────────────────────────────
 let wakeLock = null;
 async function requestWakeLock() {
-  if ('wakeLock' in navigator) {
-    try {
-      wakeLock = await navigator.wakeLock.request('screen');
-    } catch (_) {}
-  }
+  if (!('wakeLock' in navigator)) return;
+  if (document.visibilityState !== 'visible') return;
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => {
+      // Re-request if the system released it while the app is still visible
+      // (e.g. Low Power Mode, system policy). visibilitychange handles the
+      // background→foreground case separately.
+      requestWakeLock();
+    });
+  } catch (_) {}
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') requestWakeLock();
