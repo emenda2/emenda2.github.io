@@ -229,3 +229,18 @@ input:focus, button:focus { outline: 2px solid var(--green); outline-offset: 2px
   font-weight: 600;
   color: var(--amber);
 }
+
+#pause-btn {
+  position: fixed;
+  bottom: 68px;
+  right: 16px;
+  background: var(--surface);
+  color: var(--green);
+  border: 1px solid var(--green);
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  z-index: 50;
+}
