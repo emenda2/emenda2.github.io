@@ -136,6 +136,8 @@ function resumeWorkout() {
 
 // ── Cards ──────────────────────────────────────────
 function renderCards() {
+  if (state.isPaused) resumeWorkout();
+
   const container = document.getElementById('card-container');
   container.innerHTML = '';
 
