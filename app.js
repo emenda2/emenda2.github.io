@@ -23,6 +23,9 @@ const state = {
   workoutStartTime: null,
   lastResetDate: null,
   cardStates: {},
+  isPaused: false,
+  pauseStartTime: null,
+  totalPausedMs: 0,
 };
 
 // ── Init ───────────────────────────────────────────
@@ -34,6 +37,10 @@ document.addEventListener('DOMContentLoaded', () => {
   retrySyncQueue();
   document.getElementById('finish-early-btn').addEventListener('click', () => {
     triggerSync();
+  });
+  document.getElementById('pause-btn').addEventListener('click', () => {
+    if (state.isPaused) resumeWorkout();
+    else pauseWorkout();
   });
 });
 
@@ -71,6 +78,62 @@ function updateGymToggleUI(btn) {
   btn.textContent = CONFIG.gyms[state.activeGymIndex].name.toUpperCase();
 }
 
+function updatePauseButton() {
+  const btn = document.getElementById('pause-btn');
+  const exercises = CONFIG.days[state.activeDay];
+  const anyStarted = state.workoutStartTime !== null;
+  const allDone = exercises.every(ex => {
+    const s = state.cardStates[ex.name];
+    return s && s.phase === 'done';
+  });
+  btn.classList.toggle('hidden', !anyStarted || allDone);
+  btn.textContent = state.isPaused ? 'RESUME' : 'PAUSE';
+}
+
+function pauseWorkout() {
+  state.isPaused = true;
+  state.pauseStartTime = Date.now();
+
+  clearInterval(_tickInterval);
+  _tickInterval = null;
+
+  if (_audioCtx) _audioCtx.suspend();
+
+  document.querySelectorAll('.exercise-card:not(.done)').forEach(card => {
+    const swState = state.cardStates[card.dataset.exercise];
+    if (swState && swState.phase !== 'idle' && swState.phase !== 'done') {
+      card.querySelector('.stopwatch-label').textContent = 'PAUSED';
+    }
+  });
+
+  updatePauseButton();
+}
+
+function resumeWorkout() {
+  const pauseDuration = Date.now() - state.pauseStartTime;
+  state.totalPausedMs += pauseDuration;
+  state.isPaused = false;
+  state.pauseStartTime = null;
+
+  Object.values(state.cardStates).forEach(swState => {
+    if (swState.phase !== 'idle' && swState.phase !== 'done' && swState.startTime !== null) {
+      swState.startTime += pauseDuration;
+    }
+  });
+
+  if (_audioCtx) _audioCtx.resume();
+
+  document.querySelectorAll('.exercise-card:not(.done)').forEach(card => {
+    const swState = state.cardStates[card.dataset.exercise];
+    if (swState && swState.phase !== 'idle' && swState.phase !== 'done') {
+      card.querySelector('.stopwatch-label').textContent = swLabelText(swState);
+    }
+  });
+
+  startTickLoop();
+  updatePauseButton();
+}
+
 // ── Cards ──────────────────────────────────────────
 function renderCards() {
   const container = document.getElementById('card-container');
@@ -82,6 +145,9 @@ function renderCards() {
     state.cardStates = {};
     state.workoutStartTime = null;
     state.lastResetDate = todayStr;
+    state.isPaused = false;
+    state.pauseStartTime = null;
+    state.totalPausedMs = 0;
   }
 
   const exercises = CONFIG.days[state.activeDay];
@@ -94,6 +160,7 @@ function renderCards() {
   });
 
   updateFinishEarlyButton();
+  updatePauseButton();
 }
 
 function buildCard(exercise, swState) {
@@ -239,6 +306,7 @@ function formatMs(ms) {
 function onStopwatchTap(exercise, card) {
   const prev = state.cardStates[exercise.name];
   if (prev.phase === 'done') return;
+  if (state.isPaused) return;
 
   const now = Date.now();
 
@@ -272,6 +340,7 @@ function onStopwatchTap(exercise, card) {
 
   startTickLoop();
   updateFinishEarlyButton();
+  updatePauseButton();
   checkWorkoutComplete();
 }
 
@@ -352,7 +421,7 @@ async function triggerSync() {
   const sessionRow = buildSessionSummary(
     state.activeDay,
     gymName,
-    state.workoutStartTime,
+    state.workoutStartTime + state.totalPausedMs,
     completedExercises.map(ex => ex.name),
     now
   );
