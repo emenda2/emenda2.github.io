@@ -136,6 +136,8 @@ function resumeWorkout() {
 
 // ── Cards ──────────────────────────────────────────
 function renderCards() {
+  // Auto-clear any active pause when re-rendering cards (tab/gym switch),
+  // so newly rendered cards are immediately interactive.
   if (state.isPaused) resumeWorkout();
 
   const container = document.getElementById('card-container');
