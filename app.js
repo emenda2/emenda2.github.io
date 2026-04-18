@@ -32,6 +32,7 @@ const state = {
   isPaused: false,
   pauseStartTime: null,
   totalPausedMs: 0,
+  hasSynced: false,
 };
 
 // ── Init ───────────────────────────────────────────
@@ -158,6 +159,7 @@ function renderCards() {
     state.isPaused = false;
     state.pauseStartTime = null;
     state.totalPausedMs = 0;
+    state.hasSynced = false;
   }
 
   const exercises = CONFIG.days[state.activeDay];
@@ -412,6 +414,8 @@ function checkWorkoutComplete() {
 
 async function triggerSync() {
   if (!state.workoutStartTime) return;
+  if (state.hasSynced) return;
+  state.hasSynced = true;
   const exercises = CONFIG.days[state.activeDay];
   const gymName = CONFIG.gyms[state.activeGymIndex].name;
   const now = new Date();
