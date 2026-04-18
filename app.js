@@ -126,6 +126,9 @@ function pauseWorkout() {
   clearInterval(_tickInterval);
   _tickInterval = null;
 
+  // Cancel wall-clock beep timeouts — they'll be rescheduled on resume
+  for (const name of _pendingBeepTimeouts.keys()) cancelRestBeeps(name);
+
   if (_audioCtx) _audioCtx.suspend();
 
   document.querySelectorAll('.exercise-card:not(.done)').forEach(card => {
@@ -144,9 +147,13 @@ function resumeWorkout() {
   state.isPaused = false;
   state.pauseStartTime = null;
 
-  Object.values(state.cardStates).forEach(swState => {
+  Object.entries(state.cardStates).forEach(([name, swState]) => {
     if (swState.phase !== 'idle' && swState.phase !== 'done' && swState.startTime !== null) {
       swState.startTime += pauseDuration;
+    }
+    // Reschedule beeps for any exercise still in rest after the shift
+    if (swState.phase === 'rest') {
+      scheduleRestBeeps(name, swState.startTime);
     }
   });
 
@@ -370,7 +377,7 @@ function onStopwatchTap(exercise, card) {
   }
 
   if (next.phase === 'rest') {
-    scheduleRestBeeps(exercise.name);
+    scheduleRestBeeps(exercise.name, next.startTime);
   }
 
   startTickLoop();
@@ -381,48 +388,50 @@ function onStopwatchTap(exercise, card) {
 
 // ── Audio ──────────────────────────────────────────
 let _audioCtx = null;
-const _pendingBeepOscs = new Map(); // exerciseName → [OscillatorNode, ...]
+// exerciseName → [timeoutId, ...]  (wall-clock scheduled, not audio-time)
+const _pendingBeepTimeouts = new Map();
 
 function getAudioCtx() {
   if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return _audioCtx;
 }
 
-function scheduleRestBeeps(exerciseName) {
+function playBeep(frequency) {
   try {
     const ctx = getAudioCtx();
     if (ctx.state === 'suspended') ctx.resume();
-
-    const base = ctx.currentTime;
-    const oscs = [];
-    [45, 46, 47, 48, 49, 50].forEach(sec => {
-      const t = base + sec;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.value = sec === 50 ? 1100 : 880;
-      gain.gain.setValueAtTime(0.0, t);
-      gain.gain.linearRampToValueAtTime(0.4, t + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-      osc.start(t);
-      osc.stop(t + 0.3);
-      oscs.push(osc);
-    });
-    _pendingBeepOscs.set(exerciseName, oscs);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = frequency;
+    const t = ctx.currentTime;
+    gain.gain.setValueAtTime(0.0, t);
+    gain.gain.linearRampToValueAtTime(0.4, t + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    osc.start(t);
+    osc.stop(t + 0.3);
   } catch (e) {
     console.warn('Audio not available:', e);
   }
 }
 
+// restStartTime: Date.now() value at the moment rest began
+function scheduleRestBeeps(exerciseName, restStartTime) {
+  cancelRestBeeps(exerciseName);
+  const ids = [45, 46, 47, 48, 49, 50].map(sec => {
+    const delay = (restStartTime + sec * 1000) - Date.now();
+    if (delay <= 0) return null;
+    return setTimeout(() => playBeep(sec === 50 ? 1100 : 880), delay);
+  }).filter(id => id !== null);
+  _pendingBeepTimeouts.set(exerciseName, ids);
+}
+
 function cancelRestBeeps(exerciseName) {
-  const oscs = _pendingBeepOscs.get(exerciseName);
-  if (!oscs) return;
-  if (_audioCtx) {
-    oscs.forEach(osc => { try { osc.stop(_audioCtx.currentTime); } catch (_) {} });
-  }
-  _pendingBeepOscs.delete(exerciseName);
+  const ids = _pendingBeepTimeouts.get(exerciseName);
+  if (ids) ids.forEach(clearTimeout);
+  _pendingBeepTimeouts.delete(exerciseName);
 }
 
 // ── Workout Completion ─────────────────────────────
