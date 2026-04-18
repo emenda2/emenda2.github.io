@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkSkippedDays();
   retrySyncQueue();
   document.getElementById('finish-early-btn').addEventListener('click', () => {
-    triggerSync();
+    if (confirm('Log completed exercises and finish workout?')) triggerSync();
   });
   document.getElementById('pause-btn').addEventListener('click', () => {
     if (state.isPaused) resumeWorkout();
