@@ -3,18 +3,40 @@ if ('serviceWorker' in navigator) {
 }
 
 // ── Screen Wake Lock ────────────────────────────────
+// Primary: hidden canvas-stream video (works on iOS where Wake Lock doesn't)
+// Bonus: Wake Lock API where supported (Android Chrome etc.)
+let _noSleepVideo = null;
+
+function startNoSleep() {
+  if (_noSleepVideo) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 1;
+  canvas.getContext('2d').fillRect(0, 0, 1, 1);
+  const video = document.createElement('video');
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  if (canvas.captureStream) {
+    video.srcObject = canvas.captureStream(1);
+    video.play().catch(() => {});
+  }
+  _noSleepVideo = video;
+}
+
+function stopNoSleep() {
+  if (!_noSleepVideo) return;
+  _noSleepVideo.pause();
+  _noSleepVideo.srcObject = null;
+  _noSleepVideo = null;
+}
+
 let wakeLock = null;
 async function requestWakeLock() {
   if (!('wakeLock' in navigator)) return;
   if (document.visibilityState !== 'visible') return;
   try {
     wakeLock = await navigator.wakeLock.request('screen');
-    wakeLock.addEventListener('release', () => {
-      // Re-request if the system released it while the app is still visible
-      // (e.g. Low Power Mode, system policy). visibilitychange handles the
-      // background→foreground case separately.
-      requestWakeLock();
-    });
+    wakeLock.addEventListener('release', () => { requestWakeLock(); });
   } catch (_) {}
 }
 document.addEventListener('visibilitychange', () => {
@@ -324,6 +346,7 @@ function onStopwatchTap(exercise, card) {
 
   if (!state.workoutStartTime) {
     state.workoutStartTime = now;
+    startNoSleep();
   }
 
   const next = tapStopwatch(prev, now);
@@ -443,6 +466,8 @@ async function triggerSync() {
   setLastSession({ date: sessionRow.date, day: state.activeDay });
 
   const payload = { exerciseRows, sessionRow };
+
+  stopNoSleep();
 
   try {
     await syncExercises(CONFIG.sheetsWebAppUrl, exerciseRows);
