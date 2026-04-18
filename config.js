@@ -38,7 +38,6 @@ const CONFIG = {
       { name: 'Leg Press 3x6 (mt pes)', sets: 3, reps: 6 },
       { name: 'Stiff Joelhos SemiFlex 3x15 (mod)', sets: 3, reps: 15 },
       { name: 'Stiff Joelhos SemiFlex 3x8 (pes)', sets: 3, reps: 8 },
-      { name: 'Stiff Joelhos Reto 3x15 (mod)', sets: 3, reps: 15 },
       { name: 'Extensora 3x10/15 -30%', sets: 3, reps: 15 },
       { name: 'Flexora 3x10/15 -30%', sets: 3, reps: 15 },
       { name: 'Panturrilha em pé 2x12', sets: 2, reps: 12 },
