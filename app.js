@@ -9,6 +9,7 @@ let _noSleepVideo = null;
 
 function startNoSleep() {
   if (_noSleepVideo) return;
+  if (!('captureStream' in document.createElement('canvas'))) return;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 1;
   canvas.getContext('2d').fillRect(0, 0, 1, 1);
@@ -16,10 +17,11 @@ function startNoSleep() {
   video.muted = true;
   video.loop = true;
   video.playsInline = true;
-  if (canvas.captureStream) {
-    video.srcObject = canvas.captureStream(1);
-    video.play().catch(() => {});
-  }
+  // Must be in the DOM for iOS to allow playback
+  video.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none';
+  document.body.appendChild(video);
+  video.srcObject = canvas.captureStream(1);
+  video.play().catch(() => {});
   _noSleepVideo = video;
 }
 
@@ -27,6 +29,7 @@ function stopNoSleep() {
   if (!_noSleepVideo) return;
   _noSleepVideo.pause();
   _noSleepVideo.srcObject = null;
+  _noSleepVideo.remove();
   _noSleepVideo = null;
 }
 
