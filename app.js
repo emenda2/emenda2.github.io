@@ -47,6 +47,16 @@ document.addEventListener('visibilitychange', () => {
 });
 requestWakeLock();
 
+function updateBuildStamp() {
+  const el = document.getElementById('build-stamp');
+  if (!el) return;
+  const wl = 'wakeLock' in navigator ? 'WL:✓' : 'WL:✗';
+  const cs = 'captureStream' in document.createElement('canvas') ? 'CS:✓' : 'CS:✗';
+  const vp = _noSleepVideo && !_noSleepVideo.paused ? 'VP:✓' : 'VP:✗';
+  el.textContent = `v5 | ${wl} | ${cs} | ${vp}`;
+}
+document.addEventListener('DOMContentLoaded', updateBuildStamp);
+
 // ── App State ──────────────────────────────────────
 const state = {
   activeDay: 'A',
@@ -357,6 +367,7 @@ function onStopwatchTap(exercise, card) {
   if (!state.workoutStartTime) {
     state.workoutStartTime = now;
     startNoSleep();
+    updateBuildStamp();
   }
 
   const next = tapStopwatch(prev, now);
