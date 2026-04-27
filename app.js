@@ -7,6 +7,8 @@ if ('serviceWorker' in navigator) {
 // Bonus: Wake Lock API where supported (Android Chrome etc.)
 let _noSleepVideo = null;
 
+let _noSleepError = null;
+
 function startNoSleep() {
   if (_noSleepVideo) return;
   if (!('captureStream' in document.createElement('canvas'))) return;
@@ -23,7 +25,7 @@ function startNoSleep() {
   _noSleepVideo = video;
   video.play()
     .then(() => updateBuildStamp())
-    .catch(() => { _noSleepVideo = null; video.remove(); updateBuildStamp(); });
+    .catch(err => { _noSleepError = err.name; _noSleepVideo = null; video.remove(); updateBuildStamp(); });
 }
 
 function stopNoSleep() {
@@ -40,7 +42,8 @@ async function requestWakeLock() {
   if (document.visibilityState !== 'visible') return;
   try {
     wakeLock = await navigator.wakeLock.request('screen');
-    wakeLock.addEventListener('release', () => { requestWakeLock(); });
+    updateBuildStamp();
+    wakeLock.addEventListener('release', () => { wakeLock = null; updateBuildStamp(); requestWakeLock(); });
   } catch (_) {}
 }
 document.addEventListener('visibilitychange', () => {
@@ -53,7 +56,7 @@ function updateBuildStamp() {
   if (!el) return;
   const wlStatus = !('wakeLock' in navigator) ? 'WL:no' : (wakeLock ? 'WL:held' : 'WL:lost');
   const cs = 'captureStream' in document.createElement('canvas') ? 'CS:✓' : 'CS:✗';
-  const vp = _noSleepVideo && !_noSleepVideo.paused ? 'VP:✓' : 'VP:✗';
+  const vp = _noSleepVideo && !_noSleepVideo.paused ? 'VP:✓' : (_noSleepError ? `VP:${_noSleepError}` : 'VP:—');
   el.textContent = `v5 | ${wlStatus} | ${cs} | ${vp}`;
 }
 document.addEventListener('DOMContentLoaded', updateBuildStamp);
@@ -368,7 +371,6 @@ function onStopwatchTap(exercise, card) {
   if (!state.workoutStartTime) {
     state.workoutStartTime = now;
     startNoSleep();
-    updateBuildStamp();
   }
 
   const next = tapStopwatch(prev, now);
