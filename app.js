@@ -26,12 +26,19 @@ function startNoSleep() {
   if (_noSleepVideo) return;
   const video = document.createElement('video');
   video.src = _getNoSleepBlobUrl();
+  video.setAttribute('muted', '');
   video.muted = true;
-  video.loop = true;
+  video.setAttribute('playsinline', '');
   video.playsInline = true;
-  video.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none';
+  // No opacity:0 — iOS ignores fully hidden videos for screen-wake purposes.
+  // Render at 1×1px in the corner; visually invisible but present in the layout.
+  video.style.cssText = 'position:fixed;bottom:0;right:0;width:1px;height:1px;pointer-events:none;z-index:-1';
   document.body.appendChild(video);
   _noSleepVideo = video;
+  // Mimic NoSleep.js: seek to random position on each timeupdate to stay "active"
+  video.addEventListener('timeupdate', () => {
+    if (video.currentTime > 0.5) video.currentTime = Math.random() * 0.3;
+  });
   video.play()
     .then(() => updateBuildStamp())
     .catch(err => { _noSleepError = err.name; _noSleepVideo = null; video.remove(); updateBuildStamp(); });
