@@ -17,12 +17,13 @@ function startNoSleep() {
   video.muted = true;
   video.loop = true;
   video.playsInline = true;
-  // Must be in the DOM for iOS to allow playback
   video.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none';
   document.body.appendChild(video);
   video.srcObject = canvas.captureStream(1);
-  video.play().catch(() => {});
   _noSleepVideo = video;
+  video.play()
+    .then(() => updateBuildStamp())
+    .catch(() => { _noSleepVideo = null; video.remove(); updateBuildStamp(); });
 }
 
 function stopNoSleep() {
@@ -50,10 +51,10 @@ requestWakeLock();
 function updateBuildStamp() {
   const el = document.getElementById('build-stamp');
   if (!el) return;
-  const wl = 'wakeLock' in navigator ? 'WL:✓' : 'WL:✗';
+  const wlStatus = !('wakeLock' in navigator) ? 'WL:no' : (wakeLock ? 'WL:held' : 'WL:lost');
   const cs = 'captureStream' in document.createElement('canvas') ? 'CS:✓' : 'CS:✗';
   const vp = _noSleepVideo && !_noSleepVideo.paused ? 'VP:✓' : 'VP:✗';
-  el.textContent = `v5 | ${wl} | ${cs} | ${vp}`;
+  el.textContent = `v5 | ${wlStatus} | ${cs} | ${vp}`;
 }
 document.addEventListener('DOMContentLoaded', updateBuildStamp);
 
